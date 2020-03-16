@@ -1,0 +1,78 @@
+///
+/// Name:ThirdPartyIt3STransactions.si
+///
+DATABASE A3P
+FLAGS  "tableAdapters"
+PACKAGE  CSE.A3P.DB
+OUTPUT   ThirdPartyIt3STransactional
+SERVER   A3P
+SCHEMA   I3S
+
+Table STransactionalFilenameMaster options "autoincrement:1 1"
+ 
+  It3SAccountTransactionalDataID identity
+	It3SubmissionFileID LONG NULL
+	SectionIdentifier char(6) NULL
+	RecordType char(6) NULL
+	RowNumber char(10) NULL
+	RecordStatus char(1) NULL
+	UniqueNumber char(100) NULL
+	I3SUniqueNumber char(36) NULL
+	UniqueTransID CHAR(100)NULL
+	TransactionDate DATE NULL
+	TransactionType CHAR(2) NULL
+	AssignedSourceCode CHAR(4)NULL
+	TransactionValue money
+	Status char(1) NULL
+	RevisionNumber int NULL
+	IsLatestRevision char(1) NULL
+	FieldsMd5Hash char(32) NULL
+	DateCreated timestamp NULL
+	TmStamp timestamp NULL
+	UsrID char(48) NULL
+
+
+KEY PKEY PRIMARY It3SAccountTransactionalDataID
+
+//PROC Insert
+PROC SelectOne
+PROC Insert
+
+
+PROC SelectByFileIDAndUniqueNumber
+INPUT
+It3SubmissionFileID =
+I3SUniqueNumber =
+UniqueNumber = 
+
+OUTPUT
+	SectionIdentifier =
+	RecordType =
+	RowNumber =
+	RecordStatus =
+	UniqueNumber =
+	I3SUniqueNumber =
+	UniqueTransID =
+	TransactionDate =
+	TransactionType =
+	AssignedSourceCode =
+	TransactionValue =
+        
+SQLCODE
+SELECT 
+	S.SectionIdentifier
+	,S.RecordType
+	,S.RowNumber
+	,S.RecordStatus
+	,S.UniqueNumber
+	,S.I3SUniqueNumber
+	,S.UniqueTransID 
+	,S.TransactionDate 
+	,S.TransactionType 
+	,S.AssignedSourceCode 
+	,S.TransactionValue 
+FROM Main.STransactionalFilenameMaster AS S WITH (NOLOCK)
+WHERE S.It3SubmissionFileID = :It3SubmissionFileID
+AND (S.I3SUniqueNumber = :I3SUniqueNumber OR S.I3SUniqueNumber = :UniqueNumber)
+ORDER BY S.RevisionNumber, S.UniqueTransID DESC
+ENDCODE

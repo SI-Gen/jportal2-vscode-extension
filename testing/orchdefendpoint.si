@@ -1,0 +1,93 @@
+DATABASE BBD
+PACKAGE bbdservicebus.py_node_base.db
+OUTPUT orchdefendpoint
+SERVER BBDMSG
+SCHEMA BBDMSG
+
+
+//  ####   #    #    ##    #####   ######  #####
+// #       #    #   #  #   #    #  #       #    #
+//  ####   ######  #    #  #    #  #####   #    #
+//      #  #    #  ######  #####   #       #    #
+// #    #  #    #  #    #  #   #   #       #    #
+//  ####   #    #  #    #  #    #  ######  #####
+
+// Table used to store all orchestration definitions
+// This table is being used by the BOA and Workflow systems
+
+table OrchDefEndPoint
+    OrchDefEndID        INT
+    OrchDefID           INT
+    OrchEndNodeID       CHAR(48)
+    InterfaceType       INT            (PythonScript=1)
+    IntDetail           CHAR(30)
+    UsrID               CHAR(64)
+    TmStamp             TIMESTAMP
+
+
+Key PKEY PRIMARY OrchDefEndID
+
+KEY IDX01 OrchDefID OrchEndNodeID OrchDefEndID
+
+LINK BBDMSG.OrchDef (OrchDefID) OrchDefID
+
+PROC SelectOne
+PROC SelectAll
+PROC Exists
+PROC Insert
+PROC Update
+PROC DeleteOne
+
+
+//--------------------------------------------------------------
+// Queries
+//--------------------------------------------------------------
+//
+
+//--------------------------------------------------------------
+// SelectByOrchDefEndNode
+//--------------------------------------------------------------
+PROC SelectByOrchDefEndNode
+INPUT
+    OrchDefID       =
+    OrchEndNodeID   =
+OUTPUT (SINGLE)
+    OrchDefEndID    =
+    OrchDefID       =
+    OrchEndNodeID   =
+    InterfaceType   =
+    IntDetail       =
+    UsrID           =
+    TmStamp         =
+SQLCODE
+   SELECT
+      ep.OrchDefEndID,
+      ep.OrchDefID,
+      ep.OrchEndNodeID,
+      ep.InterfaceType,
+      ep.IntDetail,
+      ep.UsrID,
+      ep.TmStamp
+   FROM
+      BBDMSG.OrchDefEndPoint ep
+   WHERE
+      ep.OrchDefID = :OrchDefID
+      AND ep.OrchEndNodeID = :OrchEndNodeID
+ENDCODE
+
+PROC SelectByOrchDefID
+INPUT
+    OrchDefID       =
+OUTPUT
+    OrchDefEndID    = 
+    OrchEndNodeID   =
+SQLCODE
+   SELECT
+      ep.OrchDefEndID,
+      ep.OrchEndNodeID
+   FROM
+      BBDMSG.OrchDefEndPoint ep
+   WHERE
+      ep.OrchDefID = :OrchDefID
+ENDCODE
+

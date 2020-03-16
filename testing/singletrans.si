@@ -1,0 +1,251 @@
+DATABASE BBDMSG
+PACKAGE bbdservicebus.py_node_base.db
+OUTPUT   SingleTrans
+SERVER   BBDMSG
+SCHEMA   BBDMSG
+
+
+// This table contains an entry for every transaction in the system
+// Used for tracking the progress of a transaction through the system
+
+Table SingleTrans
+    SingleTransID           IDENTITY
+    ApplicationID           CHAR(256)         // ApplicationID of service
+    TranGUID                CHAR(36)          // Unique Transaction Identifier
+    ExternalRef             CHAR(30)          // External reference
+    Direction               CHAR(1)           // I = Incoming / O = Outgoing
+    SourceChannelID         CHAR(10)          // Channel where message came from
+    DestinationChannelID    CHAR(10)          // Channel where message is going to
+    TransType               ANSICHAR          (Request='R', Response='S')
+    Status                  BYTE              (Sent=0 Rejected=1 Received=2 Accepted=3 ResponseReceivedAccepted=4 ResponseReceivedRejected=5 ResponseReceivedNone=6 Error=7 SendNoReport=8 ErrorNoReport=9)
+    ErrorCode               CHAR(4)           // Error code
+    ErrorDesc               CHAR(600)         // Error description
+    UsrID                   CHAR(64)
+    TMStamp                 DATETIME
+    ArchFlag                FLOAT(1,0)        DEFAULT '0'
+    ArchDate                DATETIME          DEFAULT '0001-01-01-00.00.00.000000'
+
+KEY PKEY PRIMARY 
+SingleTransID
+
+KEY KEY1 TranGUID
+KEY KEY2 ArchFlag ArchDate TMStamp
+KEY KEY3 TMStamp
+
+PROC Insert
+PROC Update
+PROC SelectOne
+
+PROC GetByTranGUIDApplicationIDTransTypeDirection (standard)
+INPUT
+  TranGUID       =
+  ApplicationID  =
+  TransType      =
+  Direction      =
+OUTPUT(SINGLE)
+  SingleTransID           =
+  ApplicationID           =
+  TranGUID                =
+  ExternalRef             =
+  Direction               =
+  SourceChannelID         =
+  DestinationChannelID    =
+  TransType               =
+  Status                  =
+  ErrorCode               =
+  ErrorDesc               =
+  UsrID                   =
+  TMStamp                 =
+  ArchFlag                =
+  ArchDate                =
+SQLCODE
+SELECT 
+     SingleTransID       
+    ,ApplicationID       
+    ,TranGUID            
+    ,ExternalRef         
+    ,Direction           
+    ,SourceChannelID     
+    ,DestinationChannelID
+    ,TransType           
+    ,Status              
+    ,ErrorCode           
+    ,ErrorDesc           
+    ,UsrID               
+    ,TMStamp             
+    ,ArchFlag            
+    ,ArchDate   
+FROM BBDMSG.SINGLETRANS
+WHERE
+    TRANGUID = :TranGUID
+    AND
+    APPLICATIONID = :ApplicationID
+    AND
+    TRANSTYPE = :TransType
+    AND
+    DIRECTION = :Direction
+ORDER BY SINGLETRANSID DESC
+ENDCODE
+
+PROC TranGUIDExist
+INPUT
+   TranGUID       =
+OUTPUT(SINGLE)
+   RecCount         int
+SQLCODE
+  SELECT COUNT(*)
+  FROM
+    SingleTrans
+  WHERE
+    TranGUID = :TranGUID
+ENDCODE
+
+PROC RemoveTranGUID
+INPUT
+   TranGUID       =
+SQLCODE
+  DELETE FROM SingleTrans 
+  WHERE TranGUID = :TranGUID
+ENDCODE
+
+PROC AlertGetFloor
+INPUT
+   Minutes          INT
+OUTPUT(SINGLE)
+   TMStamp          =
+SQLCODE
+  SELECT CURRENT TIMESTAMP - :Minutes MINUTES FROM SYSIBM.SYSDUMMY1
+ENDCODE
+
+PROC AlertGetOutgoingApplications
+INPUT
+   TmStamp          =
+OUTPUT
+   ApplicationID    =
+SQLCODE
+  SELECT DISTINCT ApplicationID 
+  FROM SingleTrans 
+  WHERE Direction = 'O'  
+  AND TMSTAMP > :TmStamp
+  AND ArchFlag = 0
+  ORDER BY 1 WITH UR
+ENDCODE
+
+
+PROC AlertGetStatusForOutgoingApplication
+INPUT
+   ApplicationID    =
+   TmStamp          =
+OUTPUT
+   TransType        =
+   Status           =
+   StatusCount      INT
+SQLCODE
+  SELECT TransType, Status,Count(*) 
+  FROM SingleTrans 
+  WHERE ApplicationID = :ApplicationID
+  AND Direction = 'O'
+  AND TmStamp > :TmStamp
+  AND ArchFlag = 0  
+  GROUP BY TransType, Status
+  WITH UR
+ENDCODE
+
+PROC AlertGetErrorDetailForOutgoingApplication
+INPUT
+   ApplicationID    =
+   TmFloor          DATETIME
+OUTPUT
+   TranGUID             =
+   ExternalRef          =
+   SourceChannelID      =
+   DestinationChannelID =
+   ErrorCode            =
+   ErrorDesc            =
+   UsrID                =
+   TMStamp              =
+SQLCODE
+  SELECT TranGUID,
+         ExternalRef,
+         SourceChannelID,
+         DestinationChannelID,
+         ErrorCode,
+         ErrorDesc,
+         UsrID,
+         TMStamp
+  FROM SingleTrans
+  WHERE ApplicationID = :ApplicationID
+  AND Direction = 'O'
+  AND TMStamp > :TmFloor
+  AND TranGUID IN
+  (
+     SELECT TranGUID FROM SingleTrans 
+     WHERE Status = 7 
+     AND ApplicationID = :ApplicationID
+     AND Direction = 'O'
+     AND TMStamp > :TmFloor
+  )
+  AND ErrorCode <> ''
+  WITH UR
+ENDCODE
+
+PROC GetOriginatingChannel
+INPUT
+   TranGUID               =
+OUTPUT(SINGLE)
+   OriginatingChannelID   CHAR(10)
+SQLCODE
+  SELECT SourceChannelID
+  FROM SingleTrans 
+  WHERE TranGUID = :TranGUID
+  AND Direction = 'I' 
+  AND TransType = 'R'
+  FETCH FIRST 1 ROWS ONLY
+ENDCODE
+
+PROC SelectByTranGUIDDirectionTransType
+INPUT
+  TranGUID                =
+  Direction               =
+  TransType               =
+OUTPUT(SINGLE)
+  SingleTransID           =
+  ApplicationID           =
+  TranGUID                =
+  ExternalRef             =
+  Direction               =
+  SourceChannelID         =
+  DestinationChannelID    =
+  TransType               =
+  Status                  =
+  ErrorCode               =
+  ErrorDesc               =
+  UsrID                   =
+  TMStamp                 = 
+  ArchFlag                =
+  ArchDate                =
+SQLCODE
+  SELECT  SingleTransID,
+          ApplicationID,
+          TranGUID,
+          ExternalRef,
+          Direction,
+          SourceChannelID,
+          DestinationChannelID,
+          TransType,
+          Status,
+          ErrorCode,
+          ErrorDesc,
+          UsrID,
+          TMStamp,
+          ArchFlag,
+          ArchDate
+  FROM    SingleTrans
+  WHERE   TranGUID = :TranGUID
+  AND     Direction = :Direction
+  AND     TransType = :TransType
+  FETCH FIRST 1 ROW ONLY
+ENDCODE
+
+
+

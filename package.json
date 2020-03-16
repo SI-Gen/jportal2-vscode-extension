@@ -1,0 +1,100 @@
+{
+  "name": "si-language-support",
+  "displayName": "SI Language Support",
+  "description": "Support for file written in the SI language",
+  "author": "BBD",
+  "license": "MIT",
+  "version": "1.0.0",
+  "icon": "BBD-logo.png",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/sbsmuts/si-extension.git"
+  },
+  "publisher": "StefanSmuts",
+  "categories": [
+		"Programming Languages"
+  ],
+  "keywords": [
+    "si",
+    "language server"
+  ],
+  "engines": {
+    "vscode": "^1.33.0"
+  },
+  "activationEvents": [
+    "onLanguage:si"
+  ],
+  "main": "./client/out/extension",
+  "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "Configuration",
+      "properties": {
+        "languageServerExample.maxNumberOfProblems": {
+          "scope": "resource",
+          "type": "number",
+          "default": 100,
+          "description": "Controls the maximum number of problems produced by the server."
+        },
+        "languageServerExample.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "si",
+        "aliases": [
+          "si"
+        ],
+        "extensions": [
+          ".si"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "si",
+        "scopeName": "sources.si",
+        "path": "./syntaxes/si.tmLanguage.json",
+        "injectTo": ["source.si"],
+        "embeddedLanguages": {
+          "meta.embedded.inline.sql": "sql"
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "si",
+        "path": "./snippets/snippets.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+  },
+  "devDependencies": {
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.12.28",
+    "antlr4ts-cli": "^0.5.0-alpha.3",
+    "ts-loader": "^6.2.1",
+    "tslint": "^5.20.1",
+    "typescript": "^3.8.2"
+  },
+  "dependencies": {
+    "antlr4": "^4.8.0",
+    "antlr4ts": "^0.5.0-alpha.3"
+  }
+}

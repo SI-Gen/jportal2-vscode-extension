@@ -1,0 +1,76 @@
+{
+  "scopeName": "sources.si",
+  "patterns": [{ "include": "#expression" }],
+  "repository": {
+    "expression": {
+      "patterns": [
+        { "include": "#keywords" },
+        { "include": "#strings-d" },
+        { "include": "#strings-s" },
+        { "include": "#comments" }
+      ]
+    },
+    "comments": {
+      "name": "comment",
+      "begin": "(^[ \t]?)?(?=//)",
+      "end": "(?!\\G)",
+      "patterns": [
+        {
+          "name": "comment.line.double.forward.slash",
+          "begin": "//",
+          "end": "\n"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control",
+          "match": "(?i)\\b(table|database|package|server|schema|link|key|proc|input|output|import|sqlcode|endcode|grant|flags|to)\\s?\\t?\\b"
+        },
+        {
+          "name": "storage.type",
+          "match": "(?i)\\b(blob|boolean|byte|char|ansichar|wchar|wansichar|utf8|short|int|long|uid|date|datetime|time|timestamp|autotimestamp|tlob|xml|bigxml|userstamp|sequence|bigsequence|identity|bigidentity|money|float|double)\\s?\\t?\\b"
+        },
+        {
+          "name": "variable.language",
+          "match": "(?i)\\b(null|not|primary|unique|userid|password|default|options|all|delete|select|update|execute)\\s?\\t?\\b"
+        },
+        {
+          "name": "constant.numeric",
+          "match": "(?i)\\b\\d+s?\\t?\\b"
+        },
+        {
+          "name": "entity.name.function",
+          "match": "(?i)\\b(insert|bulkinsert|bulkupdate|deleteone|selectone|selectoneby|selectby|deleteall|maxtmstamp|update|selectall|count|exists|merge)\\s?\\t?\\b"
+        },
+        {
+          "name": "meta.embedded.inline.sql",
+          "match": "(?i)SQLCODE(.|\\n)*?ENDCODE"
+        }
+      ]
+    },
+    "strings-d": {
+      "name": "string.quoted.double",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "strings-s": {
+      "name": "string.quoted.single",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        {
+          "name": "constant.character.escape",
+          "match": "\\\\."
+        }
+      ]
+    }
+  }
+}

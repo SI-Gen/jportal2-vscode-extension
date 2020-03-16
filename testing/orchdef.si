@@ -1,0 +1,165 @@
+DATABASE BBD
+PACKAGE bbdservicebus.py_node_base.db
+OUTPUT orchdef
+SERVER BBDMSG
+SCHEMA BBDMSG
+
+
+//  ####   #    #    ##    #####   ######  #####
+// #       #    #   #  #   #    #  #       #    #
+//  ####   ######  #    #  #    #  #####   #    #
+//      #  #    #  ######  #####   #       #    #
+// #    #  #    #  #    #  #   #   #       #    #
+//  ####   #    #  #    #  #    #  ######  #####
+
+// Table used to store all orchestration definitions
+// This table is being used by the BOA and Workflow systems
+
+table OrchDef
+    OrchDefID           IDENTITY
+    Name                CHAR(50)
+    StartNodeID         CHAR(48)
+    ErrorNodeID         CHAR(48)
+    CompleteNodeID      CHAR(48)
+    StartInterfaceType  INT
+    EndInterfaceType    INT
+    StartIntDetail      CHAR(30)
+    EndIntDetail        CHAR(30)
+    UsrID               CHAR(64)
+    TmStamp             TIMESTAMP
+
+
+Key PKEY PRIMARY OrchDefID
+
+KEY UNQName UNIQUE Name
+
+PROC SelectOne
+PROC SelectAll
+PROC Exists
+PROC Insert
+PROC Update
+PROC DeleteOne
+
+//--------------------------------------------------------------
+// Queries
+//--------------------------------------------------------------
+//
+
+PROC GetByStartNode
+INPUT
+  StartNodeID        =
+OUTPUT(SINGLE)
+  OrchDefID          =
+  Name               =
+SQLCODE
+  SELECT OrchDefID,
+         Name
+  FROM BBDMSG.OrchDef
+  WHERE StartNodeID = :StartNodeID
+ENDCODE
+
+PROC GetByName
+INPUT
+  Name               =
+OUTPUT(SINGLE)
+  OrchDefID          =
+  Name               =
+  StartNodeID        =
+  ErrorNodeID        =
+  CompleteNodeID     =
+  StartInterfaceType =
+  StartIntDetail     =  
+  EndInterfaceType   =
+  EndIntDetail       =
+SQLCODE
+  SELECT OrchDefID,
+         Name,
+         StartNodeID,
+         ErrorNodeID,
+         CompleteNodeID,
+         StartInterfaceType,
+         StartIntDetail,
+         EndInterfaceType,
+         EndIntDetail         
+  FROM BBDMSG.OrchDef
+  WHERE Name = :Name
+ENDCODE
+
+PROC GetByInstanceID
+INPUT
+  OrchInstID         INT
+OUTPUT(SINGLE)
+  OrchDefID          =
+  Name               =
+  StartNodeID        =
+  ErrorNodeID        =
+  CompleteNodeID     =
+  StartInterfaceType =
+  StartIntDetail     =  
+  EndInterfaceType   =
+  EndIntDetail       = 
+  EndPointCount      INT  
+SQLCODE
+  SELECT o.OrchDefID,
+         o.Name,
+         o.StartNodeID,
+         o.ErrorNodeID,
+         o.CompleteNodeID,
+         o.StartInterfaceType,
+         o.StartIntDetail,
+         o.EndInterfaceType,
+         o.EndIntDetail,
+         Count(p.OrchDefEndID)         
+  FROM BBDMSG.OrchDef o Left Outer Join OrchDefEndPoint p On o.OrchDefID = p.OrchDefID
+  WHERE o.OrchDefID = (SELECT OrchDefID FROM OrchInst WHERE OrchInstID = :OrchInstID)
+  GROUP BY
+     o.OrchDefID,
+     o.Name,
+     o.StartNodeID,
+     o.ErrorNodeID,
+     o.CompleteNodeID,
+     o.StartInterfaceType,
+     o.StartIntDetail,
+     o.EndInterfaceType,
+     o.EndIntDetail
+ENDCODE
+
+PROC GetByDefinitionID
+INPUT
+  OrchDefID         INT
+OUTPUT(SINGLE)
+  OrchDefID          =
+  Name               =
+  StartNodeID        =
+  ErrorNodeID        =
+  CompleteNodeID     =
+  StartInterfaceType =
+  StartIntDetail     = 
+  EndInterfaceType   =
+  EndIntDetail       = 
+  EndPointCount      INT  
+SQLCODE
+  SELECT o.OrchDefID,
+         o.Name,
+         o.StartNodeID,
+         o.ErrorNodeID,
+         o.CompleteNodeID,
+         o.StartInterfaceType,
+         o.StartIntDetail,
+         o.EndInterfaceType,
+         o.EndIntDetail,
+         Count(p.OrchDefEndID)         
+  FROM BBDMSG.OrchDef o Left Outer Join OrchDefEndPoint p On o.OrchDefID = p.OrchDefID
+  WHERE o.OrchDefID = :OrchDefID
+  GROUP BY
+     o.OrchDefID,
+     o.Name,
+     o.StartNodeID,
+     o.ErrorNodeID,
+     o.CompleteNodeID,
+     o.StartInterfaceType,
+     o.StartIntDetail,
+     o.EndInterfaceType,
+     o.EndIntDetail
+ENDCODE
+

@@ -1,0 +1,153 @@
+DATABASE BBDMSG
+PACKAGE bbdservicebus.py_node_base.db
+OUTPUT   RouteHistory
+SERVER   BBDMSG
+SCHEMA   BBDMSG
+
+
+TABLE RouteHistory
+    Id            BigIdentity       // The unique ID of this message
+    MessageId     long
+    SourceNodeId  char    (48)      // The node that this message comes from
+    DestNodeId    char    (48)      // The node that this message
+    USId          char    (48)
+    TMStamp       timestamp
+    ArchFlag      FLOAT(1,0)        DEFAULT '0'
+
+
+KEY RouteHistoryKey PRIMARY Id
+
+KEY KEY01 SourceNodeId DestNodeId
+KEY KEY02 MessageId
+KEY KEY03 ArchFlag
+
+PROC Insert returning
+PROC Update
+PROC DeleteOne
+PROC SelectOne
+PROC Exists
+PROC SelectAll
+PROC Count
+
+
+//Written by:  Dieter Rosch
+//Date:        2007/06/05
+//Description: Inserts a Route History entry into the table
+//             This proc gets called by the IQueue::RouteMessageTo()
+//             function in Puffin. 
+PROC InsertMessageHop
+INPUT 
+	MessageId 		LONG
+	SourceNodeId	CHAR(16)
+	DestNodeId		CHAR(16)
+	USId					CHAR(64)
+SQLCODE
+	INSERT INTO BBDMSG.RouteHistory 
+	(
+		Id,
+		MessageId,
+		SourceNodeId,
+		DestNodeId,
+		TMStamp,
+		USId
+	)
+	VALUES 
+	(
+		(NEXTVAL FOR BBDMSG.RouteHistorySeq),
+		:MessageId,
+		:SourceNodeId,
+		:DestNodeId,
+		CURRENT_TIMESTAMP,
+		:USId
+	)
+ENDCODE		
+	
+	
+//Written by:  Jason Christison
+//Date:        2007/06/06
+//Description: Returns all route history for the specified message.
+//             Used in the front end.
+PROC ByMessageID
+INPUT
+  MessageId     LONG
+OUTPUT
+  Id            int
+  MessageId     LONG
+  SourceNodeId  char  (16)
+  DestNodeId    char  (16) 
+  USId          char  (16)
+  TMStamp       timestamp
+SQLCODE
+  SELECT Id
+       , MessageId
+       , SourceNodeID
+       , DestNodeId
+       , USId
+       , TMStamp
+    FROM BBDMSG.RouteHistory
+    WHERE MessageId = :MessageId
+ENDCODE
+
+//Written by:  Stefan Snyders
+//Date:        2007/12/11
+//Description: Get a list of Route History
+//             for the BOA Query Facility
+PROC GetRouteHistBOAQuery
+OUTPUT
+  Id            =
+  MessageId     =
+  SourceNodeId  =
+  DestNodeId    =
+  USId          =
+  TMStamp       =
+SQLCODE
+SELECT
+  Id,
+  MessageId,
+  SourceNodeId,
+  DestNodeId,
+  USId,
+  TMStamp
+FROM
+   BBDMSG.RouteHistory
+WHERE
+  &WhereClause(2047)
+ORDER BY
+  MessageId,
+  TMStamp,
+  SourceNodeId,
+  DestNodeId
+&FetchClause(2047)
+ENDCODE
+
+//Written by:  Khotso Malapane
+//Date:        2008/01/17
+//Description: Get a list of Route History
+//             for the BOA Query Facility
+PROC GetRouteHistGroup
+OUTPUT
+  Id            =
+  MessageId     =
+  SourceNodeId  =
+  DestNodeId    =
+  USId          =
+  TMStamp       =
+SQLCODE
+SELECT
+  MessageId,
+  SourceNodeId,
+  DestNodeId,
+  Date(TMStamp)
+FROM
+   BBDMSG.RouteHistory
+WHERE
+  &WhereClause
+group by sourceNodeid ,destnodeid,MESSAGEID,Date(TMStamp)
+ENDCODE
+
+//PROC DeleteByMessageID
+//INPUT
+//  MessageId     = 
+//SQLCODE
+//  Delete From BBDMSG.RouteHistory where MessageId = :MessageId
+//ENDCODE

@@ -1,0 +1,142 @@
+DATABASE BBD
+PACKAGE bbdservicebus.py_node_base.db
+OUTPUT orchinst
+SERVER BBDMSG
+SCHEMA BBDMSG
+
+
+//  ####   #    #    ##    #####   ######  #####
+// #       #    #   #  #   #    #  #       #    #
+//  ####   ######  #    #  #    #  #####   #    #
+//      #  #    #  ######  #####   #       #    #
+// #    #  #    #  #    #  #   #   #       #    #
+//  ####   #    #  #    #  #    #  ######  #####
+
+// Table used to store all orchestration running instances
+// This table is being used by the BOA and Workflow systems
+
+table OrchInst
+    OrchInstID        IDENTITY
+    OrchDefID         INT            // FK to OrchDef orchestration definition
+    DateCreated       DATETIME       // The datetime the instance was created
+    Duration          INT            // The duration (in secs) of the orch instance
+    CorToken          CHAR(50)       // The correlation token of the process which started the orchestration
+    CorKey            INT            // A FK back to the step which started the orchestration
+    Status            INT            (Busy=1, Error=2, Complete=3)
+    UsrID             CHAR(64)       // User ID
+    TmStamp           TIMESTAMP      // TimeStamp
+    ArchFlag          FLOAT(1,0)        DEFAULT '0'
+
+
+Key PKEY PRIMARY OrchInstID
+
+Key key2 CorKey
+Key key3 CorToken
+KEY key4 OrchDefID
+Key key5 ArchFlag
+
+LINK BBDMSG.OrchDef (OrchDefID) OrchDefID
+
+PROC SelectOne
+PROC SelectAll
+PROC Exists
+PROC Insert
+PROC Update
+PROC DeleteOne
+
+
+//--------------------------------------------------------------
+// Queries
+//--------------------------------------------------------------
+//
+
+PROC GetInstNodes
+INPUT
+  OrchInstID          =
+OUTPUT(SINGLE)
+  StartNodeID         CHAR(16)
+  ErrorNodeID         CHAR(16)
+  CompleteNodeID      CHAR(16)
+  OrchDefID           =  
+SQLCODE
+  SELECT D.StartNodeID,
+         D.ErrorNodeID,
+         D.CompleteNodeID,
+         D.OrchDefID
+  FROM BBDMSG.OrchInst I, BBDMSG.OrchDef D
+  WHERE I.OrchInstID = :OrchInstID
+  AND I.OrchDefID = D.OrchDefID
+ENDCODE
+
+PROC GetByCorKey
+INPUT
+  CorKey            INT
+OUTPUT(SINGLE)
+  OrchInstID        =
+SQLCODE
+  SELECT 
+    I.OrchInstID,
+    I.DateCreated,
+    I.Duration,
+    I.CorToken,
+    I.Status,
+    I.UsrID,
+    I.TmStamp
+  FROM BBDMSG.OrchInst I
+  WHERE I.CorKey = :CorKey 
+ENDCODE
+
+PROC GetByCorToken
+INPUT
+  CorToken          CHAR(50)
+OUTPUT(SINGLE)
+  OrchInstID        =
+SQLCODE
+  SELECT 
+    I.OrchInstID  
+  FROM BBDMSG.OrchInst I
+  WHERE I.CorToken = :CorToken  
+ENDCODE
+
+PROC SetDuration
+INPUT
+  OrchInstID          =
+  UsrID               =  
+SQLCODE
+  UPDATE BBDMSG.OrchInst
+  SET Duration = TIMESTAMPDIFF(2, CHAR(CURRENT_TIMESTAMP - DateCreated)),
+      UsrID = :UsrID,
+      TmStamp = CURRENT_TIMESTAMP,
+      Status = CASE Status WHEN 3 THEN 3 ELSE 1 END      
+  WHERE OrchInstID = :OrchInstID
+ENDCODE
+
+ PROC UpdateStatusForCorKey
+INPUT
+  CorKey  =
+  Status  = 
+  UsrID   =
+SQLCODE
+  UPDATE BBDMSG.OrchInst
+  SET Status = :Status,
+      UsrID = :UsrID,
+      TmStamp = CURRENT_TIMESTAMP
+  WHERE CorKey = :CorKey
+ENDCODE
+
+PROC GetCaseNoAndProcessNoByOrchInst
+INPUT
+  OrchInstID   =
+OUTPUT
+  CaseNo       INT
+  ProcessNo    INT
+SQLCODE
+ Select
+    p.CaseNo,
+    p.ProcessNo
+  From
+    BBDMSG.OrchInst oi
+    Join workflow.Step s On oi.CorKey = s.StepNo And oi.OrchInstID = :OrchInstID
+    Join workflow.Process p On p.ProcessNo = s.ParentProcess
+  With UR;
+ENDCODE

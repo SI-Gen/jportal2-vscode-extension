@@ -1,0 +1,46 @@
+{
+    "Full SI": {
+        "prefix": [
+            "full-si"
+        ],
+        "body": [
+            "$LINE_COMMENT",
+            "$LINE_COMMENT Name:${1:name}.si",
+            "$LINE_COMMENT",
+            "DATABASE ${1:databasename}",
+            "PACKAGE ${1:namespace}",
+            "OUTPUT ${1:tablename}",
+            "SERVER ${1:server}",
+            "SCHEMA ${1:schema}",
+            "",
+            "TABLE ${1:tablename}",
+            "\tCOLUMN\tIDENTITY",
+            "\tCOLUMN2\tLONG NOT NULL",
+            "\tCOLUMN3\tCHAR(10) NULL",
+            "",
+            "KEY PKEY PRIMARY ${1:keyname}",
+            "",
+            "PROC Select",
+            "PROC SelectOne",
+            "PROC Insert",
+            "PROC Update",
+            "PROC Delete",
+            "",
+            "PROC ${1:schema}",
+            "INPUT",
+            "\tCOLUMN\t=",
+            "\tCOLUMN2\t=",
+            "\tCOLUMN3\t=",
+            "\tCUSTOMCOLUMN\tCHAR(50)",
+            "OUTPUT",
+            "\tCOLUMN\t=",
+            "\tCOLUMN2\t=",
+            "\tCOLUMN3\t=",
+            "\tCUSTOMCOLUMN\tCHAR(50)",
+            "SQLCODE",
+            "CUSTOMSQLCOMMAND",
+            "ENDCODE"
+        ],
+        "description": "Full SI"
+    }
+}

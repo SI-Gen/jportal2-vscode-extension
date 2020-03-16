@@ -1,0 +1,1545 @@
+DATABASE BBDMSG
+PACKAGE bbdservicebus.py_node_base.db
+OUTPUT   Message
+SERVER   BBDMSG
+SCHEMA   BBDMSG
+
+TABLE Message
+    Id                BIGIDENTITY            // The unique ID of this message
+    SourceSysId       char    (16)          // The external system that this message came from
+    Reference         char    (64)          // The external system's reference for this message
+    ControlFlag       byte    (PuffinControlMessage=0 InterNodeMessage=1) // Is this a control message, or an internode message
+    SourceNodeId      char    (48)          // The node that this message comes from
+    NodeId            char    (48)          // The node that this message
+    ReplyNodeId       char    (48)      NULL// The node to respond to (in 2-leg messages)
+    NodeType          ansichar (Normal='N',Error='E',Completed='C',DeadLetter='D', Storage='S', Fail='F') //Note: this field gets used for archiving.
+                                            //Completed and DeadLetter messages are moved to the archive DB on a daily basis
+    MessageLen        Int                   // The real length of the message
+    MessageLenStored  Int                   // The length of the message after it was compressed and base64'ed
+    MessageData       char   (20480)        // The message contents, compressed and base64'ed
+    MetaData          char   (2048)         //A 2k blob, to store PuffinMessage metadata in
+    MessageType       byte   (L'XML'=0 Text=1 File=2, BigMessageXML=3, BigMessageText=4) // The type of MessageData
+    Priority          byte                  // The priority of the message
+    ParentMessageId   Long  NULL
+    OrchInstId        Int   NULL            // The orchestration instance this message belongs to
+    DateCreated       DateTime
+    ExternalReference char (20)       NULL  // Reference for external systems e.g. from channel interface api
+    TranGUID          char (36)       NULL  // GUID from SOAP header for Single Transaction
+    USId              char    (48)
+    TMStamp           timestamp
+    ArchFlag          byte        DEFAULT '0'
+
+
+KEY MessageKey PRIMARY Id
+
+KEY KEY01 DateCreated Reference
+KEY KEY05 ParentMessageId
+KEY KEY06 NodeId DateCreated
+KEY key07 SourceNodeId DateCreated
+KEY key08 TranGUID
+KEY key09 NodeType
+KEY key10 ArchFlag
+
+PROC    Insert RETURNING
+PROC    Update
+PROC    DeleteOne
+PROC    SelectAll
+PROC    SelectOne
+PROC    Exists
+PROC    Count
+
+PROC Select100 (standard)
+INPUT
+  NodeId                =
+SQLCODE
+  SELECT TOP 100 *
+  FROM BBDMSG.MESSAGE
+  WHERE NodeId = :NodeId
+ ENDCODE
+ 
+
+PROC GetNodeIDByIDs
+INPUT
+  ID1                    LONG
+  ID2                    LONG
+OUTPUT
+  NodeId                 =
+  SourceNodeId           =
+SQLCODE
+  SELECT
+  NodeId,
+  SourceNodeId
+  FROM BBDMSG.Message
+  WHERE ID = :ID1 OR ID = :ID2
+ENDCODE
+
+
+PROC NOCOUNTOFF
+INPUT
+OUTPUT
+SQLCODE
+  SET NOCOUNT ON
+ENDCODE
+
+
+PROC ByReplyNodeIdandMQMessageID
+INPUT
+  ReplyNodeId            =
+  MetaData               =
+OUTPUT
+  Id                     =
+  SourceNodeId           =
+  NodeId                 =
+  ReplyNodeId            =
+  ParentMessageId        =
+  DateCreated            =
+  MetaData               =
+SQLCODE
+  SELECT   Id,
+  SourceNodeId,
+  NodeId,
+  ReplyNodeId,
+  ParentMessageId,
+  DateCreated
+  FROM BBDMSG.Message
+  WHERE ReplyNodeId = :ReplyNodeId and MetaData like ''%' CONCAT :MetaData CONCAT '%''
+ENDCODE
+
+
+PROC GetXAmount
+OUTPUT
+  Id                     =
+  SourceNodeId           =
+  NodeId                 =
+  ReplyNodeId            =
+  TMStamp                =
+SQLCODE
+  SELECT   Id,
+  SourceNodeId,
+  NodeId,
+  ReplyNodeId,
+  TMStamp
+  FROM BBDMSG.Message
+  order by TMStamp desc
+  fetch first &NoOfRows rows only
+ENDCODE
+
+
+
+PROC ByReplyNodeIdOnly
+INPUT
+  ReplyNodeId            =
+OUTPUT
+  Id                     =
+  SourceNodeId           =
+  NodeId                 =
+  ReplyNodeId            =
+  ParentMessageId        =
+  DateCreated            =
+  MetaData               =
+SQLCODE
+  SELECT   Id,
+  SourceNodeId,
+  NodeId,
+  ReplyNodeId,
+  ParentMessageId,
+  DateCreated
+  FROM BBDMSG.Message
+  WHERE ReplyNodeId = :ReplyNodeId
+ENDCODE
+
+// used by Router
+PROC Queued
+INPUT
+  NodeId        char  (48)
+  BackDays      int
+OUTPUT
+  Id            =
+SQLCODE
+  SELECT
+     Id
+  FROM
+     BBDMSG.Message
+  Where
+     NodeId = :NodeId
+  ORDER BY Id
+ENDCODE
+
+//Written By:  Dieter Rosch
+//Date:        2007/06/14
+//Description: Returns the next message in a specified node's queue.
+//             Used by INodeEx.
+PROC NextQueued
+INPUT
+  NodeId           char  (48)
+  BackDays         int
+  MaxNumOfMessages int
+OUTPUT
+    Id              =
+SQLCODE
+SELECT
+    Id
+FROM
+     BBDMSG.Message
+Where
+     NodeId = :NodeId
+     and DateCreated > (CURRENT_TIMESTAMP - :BackDays DAYS)  and DateCreated <= CURRENT_TIMESTAMP
+ORDER BY Id
+
+RETURNING FIRST :MaxNumOfMessages ROWS ONLY
+ENDCODE
+
+
+// TEST FUNCTION FOR IDE PROTOTYPE
+PROC ModifyNode
+INPUT
+  Id            =
+  NodeId        char(48)
+  USId          char(64)
+  TMStamp       timestamp
+SQLCODE
+  update BBDMSG.Message
+  set NodeId = :NodeId
+    , USId    = :USId
+    , TMStamp = :TMStamp
+  where Id = :Id;
+ENDCODE
+
+PROC Reroute
+INPUT
+  Id            =
+  USId          =
+SQLCODE
+  UPDATE BBDMSG.Message
+  SET NodeID = SourceNodeID,
+      USID = :USId,
+      NodeType = 'N',
+      TMStamp = CURRENT_TIMESTAMP,
+      DateCreated = CURRENT_TIMESTAMP
+  WHERE Id = :Id
+ENDCODE
+
+//Written by:  Dieter Rosch
+//Date:        2007/06/05
+//Description: Route a message from its current Node,
+//             to the specified destination node.
+//             This proc gets called by the IQueue::RouteMessageTo()
+//             function in Puffin.
+PROC RouteToQueue
+INPUT
+  Id             =
+  SourceNodeId   =
+  DestNodeId     char(48)
+  NodeType       =
+  USId           =
+SQLCODE
+  update BBDMSG.Message
+  SET SourceNodeId=:SourceNodeId
+    , NodeId = :DestNodeId
+    , NodeType = :NodeType
+    , USId    = :USId
+    , TMStamp = CURRENT_TIMESTAMP
+  where Id = :Id
+ENDCODE
+
+
+PROC RouteTo
+INPUT
+  Id             =
+  DestNodeId     CHAR(48)
+  UsId          =
+SQLCODE
+  update BBDMSG.Message
+  SET SourceNodeId=NodeId
+    , NodeId = :DestNodeId
+    , USId    = :UsId
+    , TMStamp = CURRENT_TIMESTAMP
+  where Id = :Id
+ENDCODE
+
+// Used By IDE
+PROC Generic
+OUTPUT
+  Id              =
+  NodeId          char(48)
+  SourceNodeId    char(48)
+  SourceSysid     char(16)
+  ControlFlag     byte
+  Reference       char(64)
+  MessageType     byte
+  DateCreated     DateTime
+  Priority        byte
+  ParentMessageId long null
+SQLCODE
+  select Id
+       , NodeId
+       , SourceNodeId
+       , SourceSysid
+       , ControlFlag
+       , Reference
+       , MessageType
+       , DateCreated
+       , Priority
+       , ParentMessageId
+  from &TABLE(47)
+  &CONDITION(1024)
+ENDCODE
+
+PROC ByGeneric
+OUTPUT
+  Id                    =
+  SourceSysId           =
+  Reference             =
+  ControlFlag           =
+  SourceNodeId          =
+  NodeId                =
+  MessageLen            =
+  MessageType           =
+  Priority              =
+  ParentMessageId       =
+  DateCreated           DateTime
+SQLCODE
+SELECT Id
+       , SourceSysId
+       , Reference
+       , ControlFlag
+       , SourceNodeId
+       , NodeId
+       , MessageLen
+       , MessageType
+       , Priority
+       , ParentMessageId
+       , DateCreated
+  FROM BBDMSG.Message
+  &CONDITION(1024)
+ENDCODE
+
+PROC CountByNode
+INPUT
+  NodeId                =
+OUTPUT (Single)
+  MessageCount          int
+SQLCODE
+SELECT COUNT(Id) AS MessageCount
+  FROM BBDMSG.Message
+  WHERE NodeId = :NodeId
+ENDCODE
+
+PROC CountByParentMessageId
+INPUT
+  ParentMessageId       =
+OUTPUT (Single)
+  MessageCount          int
+SQLCODE
+SELECT COUNT(Id) AS MessageCount
+  FROM BBDMSG.Message
+  WHERE ParentMessageId = :ParentMessageId
+ENDCODE
+
+// Used by front end tester
+PROC GetData
+INPUT
+  Id           =
+OUTPUT (Single)
+  MessageType   byte
+  MessageLen    =
+  MessageData   =
+SQLCODE
+  select MessageType, MessageLen, MessageData
+  from BBDMSG.Message
+  where Id = :Id
+ENDCODE
+
+
+PROC UpdNode
+INPUT
+   MsgNo     long
+   NodeID    char(48)
+SQLCODE
+   UPDATE BBDMSG.Message
+   SET NodeID = :NodeID,
+   TmStamp = Current_Timestamp
+   WHERE Id = :MsgNo
+ENDCODE
+
+// Used By Front End
+PROC ByMgeID
+INPUT
+  Id            =
+OUTPUT
+  Id            =
+  SourceSysid   char  (16)
+  Reference     char  (64)
+  SourceNodeId  char  (48)
+  NodeID        char  (48)
+  MessageLen    =  
+  MessageData   blob   (393216)      // The message contents
+  MessageType   =
+  Priority      byte
+  DateCreated   DateTime
+  USId          char  (48)
+  TMStamp       timestamp
+SQLCODE
+  SELECT Id
+       , SourceSysid
+       , Reference
+       , SourceNodeID
+       , NodeID
+       , MessageLen
+       , MessageData
+       , MessageType
+       , Priority
+       , DateCreated
+       , USId
+       , TMStamp
+    FROM BBDMSG.Message
+    WHERE Id = :Id
+ENDCODE
+
+// Used By Front End
+PROC ByMessageID
+INPUT
+  MessageId     long
+OUTPUT
+  Id            long
+  SourceSysid   char  (16)
+  Reference     char  (64)
+  SourceNodeId  char  (48)
+  NodeID        char  (48)
+  MessageLen    =
+  MessageType   =
+  Priority      byte
+  DateCreated   DateTime
+  USId          char  (48)
+  TMStamp       timestamp
+SQLCODE
+  SELECT Id
+       , SourceSysid
+       , Reference
+       , SourceNodeID
+       , NodeID
+       , MessageLen
+       , MessageType
+       , Priority
+       , DateCreated
+       , USId
+       , TMStamp
+    FROM BBDMSG.Message
+    WHERE Id = :MessageId
+ENDCODE
+
+//Written by:  Jason Christison
+//Date:        2007/06/06
+//Description: Returns all the messages in the specified queue
+//             that were created between the specified dates.
+//             Used in the front end.
+PROC ByQ
+INPUT
+   NodeId      char   (48)
+   DateFrom    datetime
+   DateTo      datetime
+OUTPUT
+  Id            =
+  SourceSysId   char  (16)
+  Reference     char  (64)
+  SourceNodeId  char  (48)
+  NodeId        char  (48)
+  MessageLen    =
+  MessageType   =
+  Priority      byte
+  ControlFlag   byte
+  DateCreated   DateTime
+  USId          char  (48)
+  TMStamp       timestamp
+SQLCODE
+  SELECT Id
+       , SourceSysid
+       , Reference
+       , SourceNodeID
+       , NodeId
+       , MessageLen
+       , MessageType
+       , Priority
+       , ControlFlag
+       , DateCreated
+       , USId
+       , TMStamp
+    FROM BBDMSG.Message
+    WHERE NodeId = :NodeId
+     AND DateCreated between :DateFrom AND :DateTo
+     ORDER BY Id
+ENDCODE
+
+PROC ByReference
+INPUT
+   Reference   char(64)
+   DateFrom    datetime
+   DateTo      datetime
+OUTPUT
+   Id            =
+   SourceSysid   char  (16)
+   Reference     char  (64)
+   SourceNodeID  char  (48)
+   NodeID        char  (48)	
+   MessageLen    =
+   MessageType   =
+   Priority      byte
+   DateCreated   DateTime
+   USId          char  (48)
+   TMStamp       timestamp
+SQLCODE
+   SELECT
+     Id
+     ,SourceSysid
+     ,Reference
+     ,SourceNodeID
+     ,NodeID
+     ,MessageLen
+     ,MessageType
+     ,Priority
+     ,DateCreated
+     ,USId
+     ,TMStamp
+   FROM
+     BBDMSG.Message
+   WHERE Reference = :Reference
+     AND DateCreated between :DateFrom AND :DateTo
+     ORDER BY Id
+ENDCODE
+
+PROC BySourceQ
+INPUT
+   SourceQ     char(48)
+   DateFrom    datetime
+   DateTo      datetime
+OUTPUT
+   Id            =
+   SourceSysid   char  (16)
+   Reference     char  (64)
+   SourceNodeID  char  (48)
+   NodeID        char  (48)
+   MessageLen    =
+   MessageType   =
+   Priority      byte
+   DateCreated   DateTime
+   USId          char  (48)
+   TMStamp       timestamp
+SQLCODE
+   SELECT
+     Id
+     ,SourceSysid
+     ,Reference
+     ,SourceNodeID
+     ,NodeID
+     ,MessageLen
+     ,MessageType
+     ,Priority
+     ,DateCreated
+     ,USId
+     ,TMStamp
+   FROM
+     BBDMSG.Message
+   WHERE SourceNodeID = :SourceQ
+     AND DateCreated between :DateFrom AND :DateTo
+     ORDER BY Id
+ENDCODE
+
+PROC ByRefSourceQ
+INPUT
+   InReference   char(64)
+   InSourceQueue char(48)
+   InDateFrom    datetime
+   InDateTo      datetime
+OUTPUT
+   Id            =
+   SourceSysid   char  (16)
+   Reference     char  (64)
+   SourceNodeID  char  (48)
+   NodeID        char  (48)
+   MessageLen    =
+   MessageType   =
+   Priority      byte
+   DateCreated   DateTime
+   USId          char  (48)
+   TMStamp       timestamp
+SQLCODE
+   SELECT
+     Id
+     ,SourceSysid
+     ,Reference
+     ,SourceNodeID
+     ,NodeID
+     ,MessageLen
+     ,MessageType
+     ,Priority
+     ,DateCreated
+     ,USId
+     ,TMStamp
+   FROM
+     BBDMSG.Message
+   WHERE
+         Reference = :InReference
+     AND SourceNodeID = :InSourceQueue
+     AND DateCreated between :InDateFrom AND :InDateTo
+     ORDER BY Id
+ENDCODE
+
+
+
+
+// Is the message in this particular queue
+PROC IsMessageInQueue
+INPUT
+  Id      =
+  NodeId  =
+OUTPUT (single)
+  IsInQueue     int
+SQLCODE
+  SELECT Count(*)
+    FROM BBDMSG.Message
+    WHERE Id     = :Id
+    AND   NodeId = :NodeId
+ENDCODE
+
+//Returns the reply node id for a given message
+PROC GetReplyNodeId
+INPUT
+ Id           =
+OUTPUT(single)
+  ReplyNodeId =
+  Reference   =
+
+SQLCODE
+ SELECT
+     ReplyNodeID,
+     Reference
+ FROM
+     BBDMSG.Message
+ WHERE
+     Id = :Id
+ ENDCODE
+
+
+
+PROC LockMessage
+INPUT
+  Id           =
+SQLCODE
+ UPDATE BBDMSG.Message
+ SET TMStamp = current_timestamp
+ WHERE Id = :Id
+ENDCODE
+
+//Written by:      Dieter Rosch
+//Date:            2007/07/19
+//Description:     Given a parent Message ID, 
+//                 Select all children messages
+PROC SelectAllChildrenMessages
+INPUT
+ Id          =
+OUTPUT
+ ChildID     LONG
+SQLCODE
+SELECT
+ ID
+FROM
+ BBDMSG.Message
+WHERE
+ ParentMessageId = :id
+ENDCODE
+
+//Written by:      Robert
+//Date:            2007/07/27
+//Description:     Update MetaData
+Proc UpdateMetaData
+Input
+   Id          =
+   MetaData    =
+   USId        =
+Sqlcode
+   update BBDMSG.Message
+       Set MetaData = :MetaData
+           ,USId    = :USId
+           ,TMStamp = current_timestamp
+   where Id = :Id
+endcode   
+
+
+PROC ByReferenceNumber
+INPUT
+ Reference    =
+OUTPUT (Single)
+ Id           =
+ ReplyNodeId  =
+SQLCODE
+ SELECT
+       Id,
+       ReplyNodeId
+ FROM
+       BBDMSG.Message
+ WHERE
+       Reference = :Reference
+ENDCODE
+
+///  Written by : Nellie de Beer
+///  Date       : 2007-08-21
+///  Description: Retrieve the message id for a specified Source Node ID
+///               Used by BOA enquiry (RCF & Noos)
+///  UPDATED: Stefan - Remove the MessageData, create another query for single select
+PROC BySourceNodeId
+INPUT
+  dateFrom      DateTime
+  dateTo        DateTime
+OUTPUT
+   Id            =
+   DateCreated   DateTime
+   USId          char  (48)
+   TMStamp       timestamp
+SQLCODE
+  SELECT
+     Id
+     ,DateCreated
+     ,USId
+     ,TMStamp
+   FROM
+      BBDMSG.Message
+   WHERE 
+      DateCreated >= :dateFrom AND dateCreated <= :dateTo
+      AND ID in
+    (SELECT MessageID from ROUTEHISTORY
+    WHERE
+        &WhereClauseForTeamKeyAndOrUsrIDCreated(2048))
+ENDCODE
+
+
+///  Written by : Stefan Snyders
+///  Date       : 2007-11-26
+///  Description: Retrieve the messagedata for a specified Source Node ID
+///               Used by BOA enquiry (RCF & Noos)
+PROC MessageDataBysourceNodeID
+INPUT
+  Id              =
+OUTPUT (single)
+   MessageData    =
+SQLCODE
+  SELECT
+      MessageData
+   FROM
+      BBDMSG.Message
+   WHERE
+      Id         = :Id
+ENDCODE
+
+///  Written by : Alistair Lacy
+///  Date       : 2007-12-10
+///  Description: Update the Orchestration instance ID
+PROC UpdateOrchInstIDNull
+INPUT
+  Id              =  
+SQLCODE
+  Update BBDMSG.Message
+  Set   ORCHINSTID = Null,
+  TmStamp = Current_Timestamp
+  Where ID = :Id
+ENDCODE
+
+//  Written by  : Khotso Malapane
+///  Date       : 2008-01-14
+PROC GetParentMessageId
+INPUT
+  Id                 =
+OUTPUT 
+   ParentMessageID    =
+SQLCODE
+  SELECT
+      ParentMessageID
+   FROM
+      BBDMSG.Message
+   WHERE
+      Id         = :Id
+ENDCODE
+
+
+//  Written by  : Andre Faught
+///  Date       : 2008-01-17
+PROC GetBySourceAndNodeId
+INPUT
+  SourceNodeId    =
+  NodeId          =
+  EndDate         DateTime  
+OUTPUT 
+  Id              =
+SQLCODE
+  SELECT
+      Id
+   FROM
+      BBDMSG.Message
+   WHERE
+      NodeId         = :NodeId AND 
+      SourceNodeId   = :SourceNodeId AND
+      DateCreated    < :EndDate
+ENDCODE
+
+// Author  : Rohan
+// Date    : 2008-02-25
+// Used by : BankDetails_Verification Node to set OrchinstId
+PROC UpdateOrchInstID
+INPUT
+  Id              =  
+  OrchInstId      = 
+SQLCODE
+  Update BBDMSG.Message
+  Set   OrchInstId = :OrchInstId,
+  TmStamp = Current_Timestamp
+  Where ID = :Id
+ENDCODE
+
+PROC DeleteById
+INPUT 
+  Id               =
+SQLCODE
+  Delete From BBDMSG.Message Where Id = :Id
+ENDCODE
+
+PROC GetMetaData
+INPUT
+ Id              =
+OUTPUT (Single)
+ MetaData        =
+SQLCODE
+ SELECT
+       MetaData 
+ FROM
+       BBDMSG.Message
+ WHERE
+       Id = :Id
+ENDCODE
+
+Proc SetChildrenMetaData
+Input
+   ParentId    LONG
+   FromId      LONG
+   USId        =
+Sqlcode
+   update BBDMSG.Message
+       Set MetaData = (Select MetaData from BBDMSG.Message where Id = :FromId)
+           ,USId    = :USId
+           ,TMStamp = current_timestamp
+   where ParentMessageId = :ParentId
+endcode
+
+PROC SelectMessageByCaseNoAndProcType
+INPUT
+  CaseNo   INT
+  ProcType INT
+OUTPUT
+  MessageID  LONG
+SQLCODE
+  SELECT
+    messageid
+  FROM
+    Process inner join cases on Process.CaseNo = Cases.CaseNo 
+  WHERE
+    Process.Caseno = :CaseNo and Process.ProcType = :ProcType
+ENDCODE   
+
+//Used by scriptnode to set message header info
+PROC UpdateMessageHeaderInfo
+INPUT 
+  Id              =
+  ParentMessageId =
+  ControlFlag     =
+  MessageType     =
+  OrchInstId      =
+SQLCODE
+  UPDATE
+    BBDMSG.message
+  SET  
+    ParentMessageId = :ParentMessageId,
+    ControlFlag     = :ControlFlag,
+    MessageType     = :MessageType,
+    OrchInstId      = :OrchInstId    
+  WHERE
+    ID =:Id
+ENDCODE
+
+
+
+//Used by scriptnode to set message header info
+PROC CheckDuplicate
+INPUT 
+  Reference =
+OUTPUT (single)
+  noOf  int
+SQLCODE
+ select 
+    count(*) noOf 
+ from 
+    BBDMSG.Message
+ where 
+    DateCreated > (CURRENT_TIMESTAMP - 1  DAYS)
+    and Reference = :Reference
+ENDCODE
+
+
+//Used by scriptnode to set message header info
+PROC UpdateParentMessageId
+INPUT 
+  Id              =
+  ParentMessageId =
+SQLCODE
+  UPDATE
+    BBDMSG.message
+  SET  
+    ParentMessageId = :ParentMessageId
+  WHERE
+    ID =:Id
+ENDCODE
+
+//Used by scriptnode to set message header info
+PROC UpdateGUID
+INPUT 
+  Id              =
+  TranGUID        =
+SQLCODE
+  UPDATE
+    BBDMSG.message
+  SET  
+    TranGUID = :TranGUID
+  WHERE
+    ID =:Id
+ENDCODE
+
+//Used by scriptnode to set message header info
+PROC UpdateParentMessageIdAndGUID
+INPUT 
+  Id              =
+  ParentMessageId =
+  TranGUID        =
+SQLCODE
+  UPDATE
+    BBDMSG.message
+  SET  
+    ParentMessageId = :ParentMessageId,
+    TranGUID        = :TranGUID
+  WHERE
+    ID =:Id
+ENDCODE
+
+
+PROC UpdateMessageData
+INPUT 
+  Id                   =
+  MessageLen           =
+  MessageLenStored     =
+  MessageData          =
+  USId                 =
+SQLCODE
+  UPDATE
+    BBDMSG.message
+  SET  
+    MessageLen              = :MessageLen,
+    MessageLenStored        = :MessageLenStored,
+    MessageData             = :MessageData,
+    USId                    = :USId
+  WHERE
+    ID =:Id
+ENDCODE
+
+
+PROC UpdateReference
+INPUT
+  Id            =
+  Reference     =
+  USId          =
+SQLCODE
+  UPDATE
+        BBDMSG.Message
+  SET
+        Reference = :Reference,
+        USId=:USId,
+        TMSTAMP=CURRENT_TIMESTAMP
+  WHERE
+        Id=:Id
+ENDCODE
+
+PROC HistFullSelectOneFromViewGeneric (standard)
+INPUT
+  Id      =
+OUTPUT
+SQLCODE
+  Select   
+   ID
+  ,SourceSysId
+  ,Reference
+  ,ControlFlag      
+  ,SourceNodeId    
+  ,NodeId         
+  ,ReplyNodeId    
+  ,NodeType         
+  ,MessageLen  
+  ,MessageLenStored
+  ,MessageData     
+  ,MetaData        
+  ,MessageType   
+  ,Priority       
+  ,ParentMessageId 
+  ,OrchInstId        
+  ,DateCreated      
+  ,ExternalReference                                    
+  ,USId             
+  ,TMStamp          
+  From MessageHistFull
+  Where Id = :Id
+EndCode
+
+
+PROC HistFullSelectOneFromViewArchive (standard)
+INPUT
+  Id      =
+OUTPUT
+SQLCODE
+  Select   
+   ID
+  ,SourceSysId
+  ,Reference
+  ,ControlFlag      
+  ,SourceNodeId    
+  ,NodeId         
+  ,ReplyNodeId    
+  ,NodeType         
+  ,MessageLen  
+  ,MessageLenStored
+  ,MessageData     
+  ,MetaData        
+  ,MessageType   
+  ,Priority       
+  ,ParentMessageId 
+  ,OrchInstId        
+  ,DateCreated      
+  ,ExternalReference                                    
+  ,USId             
+  ,TMStamp          
+  From MessageHistFull
+  Where ArchInd = &ArchId(1)
+    And Id = :Id
+EndCode
+
+PROC BySourceNodeIdArch
+INPUT
+  dateFrom      DateTime
+  dateTo        DateTime
+OUTPUT
+   Id            =
+   DateCreated   DateTime
+   USId          char  (48)
+   TMStamp       timestamp
+SQLCODE
+  SELECT
+     Id
+     ,DateCreated
+     ,USId
+     ,TMStamp
+   FROM
+      MessageHistMask
+   WHERE 
+      DateCreated >= :dateFrom AND dateCreated <= :dateTo
+      AND ID in
+    (SELECT MessageID from RouteHistoryHistFull
+      WHERE &WhereClauseForTeamKeyAndOrUsrIDCreated(2048)
+        AND ArchInd = &archInd(1))
+   AND ArchInd = &archInd(1)
+ENDCODE
+
+PROC GetGUID
+INPUT
+  Id          =
+OUTPUT (single)
+  TranGUID    =
+SQLCODE
+  SELECT
+      TranGUID
+   FROM
+      BBDMSG.Message
+   WHERE
+      Id          = :Id
+ENDCODE
+
+// Is the message in this particular queue
+PROC CountByNodeSourceNode
+INPUT
+  SourceNodeId     =
+  NodeId           =
+OUTPUT (single)
+  CountInQueue     int
+SQLCODE
+  SELECT Count(*)
+    FROM BBDMSG.Message
+    WHERE SourceNodeId  = :SourceNodeId
+    AND   NodeId        = :NodeId
+ENDCODE
+
+// new pyscript based reads from message and messagehist
+// treats the two tables as single with union
+PROC BiGeneric
+INPUT
+  FromDate          =(DateCreated)
+  ToDate            =(DateCreated)
+OUTPUT
+  Id                =
+  NodeId            =
+  SourceNodeId      =
+  SourceSysid       =
+  ControlFlag       =
+  Reference         =
+  MessageType       =
+  DateCreated       =
+  Priority          =
+  ParentMessageId   =
+  OrchInstId        =
+  ExternalReference =
+  TranGUID          =
+  TableName         char(15)
+SQLCODE
+  select Id
+   , NodeId
+   , SourceNodeId
+   , SourceSysid
+   , ControlFlag
+   , Reference
+   , MessageType
+   , DateCreated
+   , Priority
+   , ParentMessageId
+   , OrchInstId
+   , ExternalReference
+   , TranGUID
+   , 'Message' TableName
+  from BBDMSG.Message
+  where DateCreated between :Fromdate and :ToDate and
+  &CONDITION(1024)
+  
+ENDCODE
+
+// new pyscript based reads from message and messagehist
+//
+PROC BiGetData
+INPUT
+  Id            =
+OUTPUT (Single)
+  MessageType   =
+  MessageLen    =
+  MessageData   =
+  TableName     char(15)
+SQLCODE
+  select MessageType, MessageLen, MessageData, 'MessageHist' TableName
+  from MessageHist
+  where Id = :Id
+  union
+  select MessageType, MessageLen, MessageData, 'Message' TableName
+  from BBDMSG.Message
+  where Id = :Id
+ENDCODE
+
+// new pyscript based reads from message and messagehist
+// SelectOne replacement for ides and eclipse
+PROC BiReadOne 
+INPUT 
+  Id =
+OUTPUT (single)
+  Id                =
+  SourceSysId       =
+  Reference         =
+  ControlFlag       =
+  SourceNodeId      =
+  NodeId            =
+  ReplyNodeId       =
+  NodeType          =
+  MessageLen        =
+  MessageLenStored  =
+  MessageData       =
+  MetaData          =  
+  MessageType       =
+  Priority          =  
+  ParentMessageId   =
+  OrchInstId        =
+  DateCreated       =
+  ExternalReference =
+  TranGUID          =
+  USId              =
+  TMStamp           =
+  TableName         char(15)
+SQLCODE
+select Id 
+     , SourceSysId
+     , Reference
+     , ControlFlag
+     , SourceNodeId
+     , NodeId
+     , ReplyNodeId
+     , NodeType
+     , MessageLen
+     , MessageLenStored
+     , MessageData
+     , MetaData
+     , MessageType
+     , Priority
+     , ParentMessageId
+     , OrchInstId
+     , DateCreated
+     , ExternalReference
+     , TranGUID
+     , USId
+     , TMStamp
+     , 'Message' TableName
+ from BBDMSG.Message
+ where Id = :Id
+ENDCODE
+
+PROC GetByOrchInstID
+INPUT 
+  OrchInstId        =
+OUTPUT (single)
+  Id                =
+  SourceSysId       =
+  Reference         =
+  ControlFlag       =
+  SourceNodeId      =
+  NodeId            =
+  ReplyNodeId       =
+  NodeType          =
+  MessageLen        =
+  MessageLenStored  =
+  MessageData       =
+  MetaData          =  
+  MessageType       =
+  Priority          =  
+  ParentMessageId   =
+  OrchInstId        =
+  DateCreated       =
+  ExternalReference =
+  TranGUID          =
+  USId              =
+  TMStamp           =
+  TableName         char(15)
+SQLCODE
+select Id 
+     , SourceSysId
+     , Reference
+     , ControlFlag
+     , SourceNodeId
+     , NodeId
+     , ReplyNodeId
+     , NodeType
+     , MessageLen
+     , MessageLenStored
+     , MessageData
+     , MetaData
+     , MessageType
+     , Priority
+     , ParentMessageId
+     , OrchInstId
+     , DateCreated
+     , ExternalReference
+     , TranGUID
+     , USId
+     , TMStamp
+     , 'Message' TableName
+ from BBDMSG.Message
+ where OrchInstId = :OrchInstId
+ENDCODE
+
+
+PROC GetMesHistSourceDestQueues
+INPUT
+  SourceNodeId      CHAR(48)
+  DestNodeId        CHAR(48)
+  ReqNodeId         CHAR(48)
+  DateSent          DATE
+OUTPUT (SINGLE)
+  Id                =
+SQLCODE
+  select m_s.id
+  from BBDMSG.RouteHistory rh
+      inner join BBDMSG.Message m_rp on m_rp.id = rh.MESSAGEID
+      inner join BBDMSG.Message m_r on m_r.PARENTMESSAGEID = m_rp.ID
+      inner join BBDMSG.Message m_s on m_s.PARENTMESSAGEID = m_r.ID
+  where rh.SOURCENODEID = :SourceNodeId and
+        rh.DESTNODEID = :DestNodeId and
+        m_rp.nodeid = :ReqNodeId and
+        m_rp.METADATA like &MetadatLike(200) and
+        date(rh.tmstamp) = :DateSent
+ENDCODE
+
+
+PROC GetArchiveBatch
+INPUT
+  ArchFlag          =
+OUTPUT
+  Id                =
+  MessageType       =
+SQLCODE
+    select Id,
+        MessageType
+    from BBDMSG.Message
+    where ArchFlag = :ArchFlag and
+          tmstamp < current_timestamp - &Days(200) days and
+          NodeType = 'C'
+    fetch first &FetchLimit(200) rows only;
+ENDCODE
+
+PROC GetMessageDataPayload
+INPUT
+  Id                =
+OUTPUT (single)
+  MessageData       =
+SQLCODE
+    select MessageData
+    from BBDMSG.Message
+    where Id = :Id
+ENDCODE
+
+PROC MarkMessageFileArchived
+INPUT
+  Id                =
+  ArchFlag          =
+OUTPUT
+SQLCODE
+    Update BBDMSG.Message
+    set ArchFlag = :ArchFlag
+    where Id = :Id
+ENDCODE
+
+PROC SelectDistinctAllFailedQueues
+OUTPUT
+    NodeId            =
+SQLCODE
+    SELECT DISTINCT NodeId
+    FROM [BBDMSG].[Message]
+    WITH (NOLOCK)
+    WHERE NodeId LIKE '%.ERR'
+    ORDER BY NodeId ASC
+ENDCODE
+
+PROC SelectRecursiveMessages
+INPUT
+  Id                =
+OUTPUT
+  Id                =
+  ParentMessageId   =
+  SourceNodeId      =
+  NodeId            =
+  DateCreated       =
+  TMStamp           =
+  ReplyNodeId       =
+  NodeType          char    (1)
+  Content           char(20480)
+
+SQLCODE
+  ;WITH RootMessage AS (
+  SELECT BM.Id, BM.ParentMessageId, BM.SourceNodeId, BM.NodeId,  BM.DateCreated, BM.TMStamp, BM.ReplyNodeId, BM.NodeType,
+  BBDMSG.DecompressBase64ZipDeflate(BM.MessageData) AS Content
+  FROM [BBDMSG].[Message] BM
+  WHERE Id = :Id
+  UNION ALL 
+  SELECT M.Id, M.ParentMessageId, M.SourceNodeId, M.NodeId, M.DateCreated, M.TMStamp, M.ReplyNodeId, M.NodeType,
+  BBDMSG.DecompressBase64ZipDeflate(M.MessageData) AS Content
+  FROM [BBDMSG].[Message] M
+  INNER JOIN RootMessage RM ON RM.ParentMessageId = M.Id
+  )
+  , MinMessage AS (
+      SELECT MIN(Id) Id
+      FROM [RootMessage]
+      WHERE ParentMessageId IS NULL
+      OR ParentMessageId = 0
+      GROUP BY Id
+  )
+  , ChildrenMessages AS (
+  SELECT BM.Id, BM.ParentMessageId, BM.SourceNodeId, BM.NodeId, BM.DateCreated, BM.TMStamp, BM.ReplyNodeId, BM.NodeType,
+  BBDMSG.DecompressBase64ZipDeflate(BM.MessageData) AS Content
+  FROM [BBDMSG].[Message] BM
+  INNER JOIN MinMessage MinMes ON BM.Id = MinMes.Id
+  UNION ALL
+  SELECT M.Id, M.ParentMessageId, M.SourceNodeId, M.NodeId, M.DateCreated, M.TMStamp, M.ReplyNodeId, M.NodeType,
+  BBDMSG.DecompressBase64ZipDeflate(M.MessageData) AS Content 
+  FROM [BBDMSG].[Message] M
+  INNER JOIN ChildrenMessages CM ON M.ParentMessageId = CM.Id
+  )
+  SELECT * FROM RootMessage
+  UNION
+  SELECT * FROM ChildrenMessages
+  ORDER BY ParentMessageId, Id
+ENDCODE
+
+
+PROC SelectOngoingMessages
+INPUT
+  StartTime         DateTime
+  EndTime           DateTime
+OUTPUT 
+  Id                =
+  NodeId            =
+  TMStamp           DateTime
+  NodeType          char    (1)
+
+SQLCODE
+SELECT TOP 20 Id,  NodeId, TMStamp,[NodeType]
+FROM [BBDMSG].[Message] 
+WITH (NOLOCK)
+WHERE [TMStamp] >=  :StartTime 
+AND [TMStamp] <= :EndTime
+AND [NodeType] <> 'C'
+AND [NodeType] <> 'E'
+ORDER BY [TMStamp]
+ENDCODE
+
+
+PROC SelectCompleteMessages
+INPUT
+  StartTime         DateTime
+  EndTime           DateTime
+OUTPUT 
+  Id                =
+  NodeId            =
+  TMStamp           DateTime
+  NodeType          char    (1)
+
+SQLCODE
+SELECT TOP 20 Id,  NodeId, TMStamp, [NodeType]
+FROM [BBDMSG].[Message]
+WITH (NOLOCK)   
+WHERE [TMStamp] >=  :StartTime 
+AND [TMStamp] <= :EndTime
+AND [NodeType] = 'C'
+ORDER BY [TMStamp]
+ENDCODE
+
+
+PROC SelectErrorMessages
+INPUT
+  StartTime         DateTime
+  EndTime           DateTime
+OUTPUT 
+  Id                =
+  NodeId            =
+  TMStamp           DateTime
+  NodeType          char    (1)
+
+SQLCODE
+SELECT TOP 20 Id,  NodeId, TMStamp, [NodeType]
+FROM [BBDMSG].[Message]
+WITH (NOLOCK) 
+WHERE [TMStamp] >=  :StartTime 
+AND [TMStamp] <= :EndTime
+AND [NodeType] = 'E'
+ORDER BY [TMStamp]
+ENDCODE
+
+
+
+PROC SelectErrorMessageCount
+INPUT
+  StartTime         DateTime
+  EndTime           DateTime
+OUTPUT 
+  Total             int
+  Created           DateTime
+
+SQLCODE
+SELECT count([id]) AS [Total], dateadd(DAY,0, datediff(day,0, [DateCreated])) AS [Created]
+FROM  [BBDMSG].[BBDMSG].[Message]
+WITH (NOLOCK)
+WHERE [NodeType] = 'E'
+AND [TMStamp] >=  :StartTime 
+AND [TMStamp] <= :EndTime
+GROUP BY dateadd(DAY,0, datediff(day,0, [DateCreated]))
+ORDER BY [Created]
+ENDCODE
+
+
+PROC SelectCompleteMessageCount
+INPUT
+  StartTime         DateTime
+  EndTime           DateTime
+OUTPUT 
+  Total             int
+  Created           DateTime
+
+SQLCODE
+SELECT count(id) AS Total, dateadd(DAY,0, datediff(day,0, [DateCreated])) AS Created
+FROM  [BBDMSG].[BBDMSG].[Message]
+WITH (NOLOCK) 
+WHERE [NodeType] = 'C'
+AND [TMStamp] >=  :StartTime 
+AND [TMStamp] <= :EndTime
+GROUP BY dateadd(DAY,0, datediff(day,0, [DateCreated]))
+ORDER BY Created
+ENDCODE
+
+
+PROC SelectOngoingMessageCount
+INPUT
+  StartTime         DateTime
+  EndTime           DateTime
+OUTPUT 
+  Total             int
+  Created           DateTime
+
+SQLCODE
+SELECT count(id) AS Total, dateadd(DAY,0, datediff(day,0, [DateCreated])) AS Created
+FROM  [BBDMSG].[BBDMSG].[Message]
+WITH (NOLOCK) 
+WHERE [TMStamp] >=  :StartTime 
+AND [TMStamp] <= :EndTime
+AND [NodeType] <> 'C'
+AND [NodeType] <> 'E'
+GROUP BY dateadd(DAY,0, datediff(day,0, [DateCreated]))
+ORDER BY Created
+ENDCODE
+
+
+PROC SelectMessageById
+INPUT
+  Id                =
+OUTPUT 
+  Id                =
+  ParentMessageId   =
+  SourceNodeId      =
+  NodeId            =
+  DateCreated       =
+  TMStamp           =
+  ReplyNodeId       =
+  Content           char(20480)
+
+SQLCODE
+SELECT Id, ParentMessageId, SourceNodeId, NodeId,  DateCreated, TMStamp, ReplyNodeId, 
+  BBDMSG.DecompressBase64ZipDeflate(MessageData) AS Content
+  FROM [BBDMSG].[Message]
+  WITH (NOLOCK) 
+  WHERE Id = :Id
+ENDCODE
+
+PROC SelectAllByNodeId
+INPUT
+  NodeId                =
+OUTPUT
+  Id                    =
+SQLCODE
+  SELECT Id
+  FROM BBDMSG.MESSAGE
+  WITH (NOLOCK)
+  WHERE NodeId = :NodeId
+ ENDCODE
+
+PROC SelectQueueCount
+OUTPUT
+  Number                int
+  NodeId                =
+  NodeType              char(1)
+
+SQLCODE  
+  SELECT count([Id]) as Number ,[NodeId], NodeType
+  FROM [BBDMSG].[BBDMSG].[Message]
+  WITH (NOLOCK)
+  GROUP BY [NodeId], NodeType
+ENDCODE
