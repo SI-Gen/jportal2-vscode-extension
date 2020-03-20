@@ -12,7 +12,7 @@
   },
   "publisher": "StefanSmuts",
   "categories": [
-		"Programming Languages"
+    "Programming Languages"
   ],
   "keywords": [
     "si",
@@ -66,7 +66,9 @@
         "language": "si",
         "scopeName": "sources.si",
         "path": "./syntaxes/si.tmLanguage.json",
-        "injectTo": ["source.si"],
+        "injectTo": [
+          "source.si"
+        ],
         "embeddedLanguages": {
           "meta.embedded.inline.sql": "sql"
         }
@@ -87,11 +89,11 @@
   },
   "devDependencies": {
     "@types/mocha": "^5.2.7",
-    "@types/node": "^12.12.28",
+    "@types/node": "^12.12.30",
     "antlr4ts-cli": "^0.5.0-alpha.3",
     "ts-loader": "^6.2.1",
     "tslint": "^5.20.1",
-    "typescript": "^3.8.2"
+    "typescript": "^3.8.3"
   },
   "dependencies": {
     "antlr4": "^4.8.0",
