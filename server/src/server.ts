@@ -316,8 +316,10 @@ connection.onCompletion(
 connection.onCompletionResolve(
   (item: CompletionItem): CompletionItem => {
     let autocomplete = getAutoComplete();
-    item.detail = autocomplete[item.data].detail;
-    item.documentation = autocomplete[item.data].documentation;
+    if (autocomplete != undefined) {
+      item.detail = autocomplete[item.data].detail;
+      item.documentation = autocomplete[item.data].documentation;
+    }
     return item;
   }
 );
