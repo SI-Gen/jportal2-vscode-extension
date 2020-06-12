@@ -4,7 +4,7 @@
   "description": "Support for file written in the SI language",
   "author": "BBD",
   "license": "MIT",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "icon": "BBD-logo.png",
   "repository": {
     "type": "git",
