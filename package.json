@@ -4,7 +4,7 @@
   "description": "Support for file written in the SI language",
   "author": "BBD",
   "license": "MIT",
-  "version": "0.0.6",
+  "version": "1.0.0",
   "icon": "BBD-logo.png",
   "repository": {
     "type": "git",
@@ -81,7 +81,12 @@
       }
     ]
   },
-  "scripts": {},
+  "scripts": {
+    "vscode:prepublish": "cd server && npm install && cd ../client && npm install && cd ../ && npm run compile",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+  },
   "devDependencies": {
     "@types/mocha": "^5.2.7",
     "@types/node": "^12.12.30",

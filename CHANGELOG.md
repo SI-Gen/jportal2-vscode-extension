@@ -20,5 +20,5 @@
 ## 0.0.5
 - Installing the server the same way as the client.
 
-## 0.0.6
-- Deleting all the scripts in the manifest package.json
+## 1.0.0
+- The mystery of missing dependencies was solved when the villain was unmasked as the .vscodeignore file which was ignoring the dependencies.
