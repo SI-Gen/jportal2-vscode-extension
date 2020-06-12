@@ -19,3 +19,6 @@
 
 ## 0.0.5
 - Installing the server the same way as the client.
+
+## 0.0.6
+- Deleting all the scripts in the manifest package.json
