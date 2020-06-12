@@ -1,6 +1,6 @@
 import { ANTLRErrorStrategy, DefaultErrorStrategy } from 'antlr4ts';
 import { IntervalSet } from 'antlr4ts/misc/IntervalSet';
-import { SuppressWarnings } from 'antlr4ts/Decorators';
+import { SuppressWarnings } from 'antlr4ts/Decorators'
 
 export class ParserAutoCompleteErrorHandler extends DefaultErrorStrategy  {
 	expectedTokens: number[] = [];

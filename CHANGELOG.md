@@ -12,3 +12,7 @@
 
 ## 0.0.3
 - Rearranged dependencies
+
+## 0.0.4
+- Updated the install scripts to match Microsoft's example
+- Renamed the Extension
