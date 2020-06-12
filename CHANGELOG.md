@@ -16,3 +16,6 @@
 ## 0.0.4
 - Updated the install scripts to match Microsoft's example
 - Renamed the Extension
+
+## 0.0.5
+- Installing the server the same way as the client.

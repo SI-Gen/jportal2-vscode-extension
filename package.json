@@ -4,7 +4,7 @@
   "description": "Support for file written in the SI language",
   "author": "BBD",
   "license": "MIT",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "icon": "BBD-logo.png",
   "repository": {
     "type": "git",
@@ -82,7 +82,7 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "cd client && npm install && cd .. && npm run compile",
+    "vscode:prepublish": "cd client && npm install && cd ../server && npm install && cd ../ && npm run compile",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
