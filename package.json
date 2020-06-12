@@ -4,7 +4,7 @@
   "description": "Support for file written in the SI language",
   "author": "BBD",
   "license": "MIT",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "icon": "BBD-logo.png",
   "repository": {
     "type": "git",
@@ -95,9 +95,5 @@
     "tslint": "^5.20.1",
     "typescript": "^3.8.3"
   },
-  "dependencies": {
-    "antlr4": "^4.8.0",
-    "antlr4ts": "^0.5.0-alpha.3",
-    "vscode-languageserver": "^6.1.1"
-  }
+  "dependencies": {}
 }

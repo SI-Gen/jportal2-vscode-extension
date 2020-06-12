@@ -17,7 +17,7 @@ import {
   Hover
 } from 'vscode-languageserver';
 
-import { ANTLRInputStream } from 'antlr4ts/ANTLRInputStream';
+import { ANTLRInputStream } from './antlr/grammer';
 import { CommonTokenStream } from 'antlr4ts/CommonTokenStream';
 import { siParser } from './antlr/grammer/siParser'
 import { siLexer } from './antlr/grammer/siLexer'
