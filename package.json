@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://gitlab.com/sbsmuts/si-extension.git"
   },
-  "publisher": "StefanSmuts",
+  "publisher": "BBDSoftware",
   "categories": [
     "Programming Languages"
   ],
@@ -30,13 +30,13 @@
       "type": "object",
       "title": "Configuration",
       "properties": {
-        "languageServerExample.maxNumberOfProblems": {
+        "siLanguageServer.maxNumberOfProblems": {
           "scope": "resource",
           "type": "number",
           "default": 100,
           "description": "Controls the maximum number of problems produced by the server."
         },
-        "languageServerExample.trace.server": {
+        "siLanguageServer.trace.server": {
           "scope": "window",
           "type": "string",
           "enum": [
@@ -97,6 +97,7 @@
   },
   "dependencies": {
     "antlr4": "^4.8.0",
-    "antlr4ts": "^0.5.0-alpha.3"
+    "antlr4ts": "^0.5.0-alpha.3",
+    "vscode-languageserver": "^6.1.1"
   }
 }
