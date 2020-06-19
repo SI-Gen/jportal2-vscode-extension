@@ -1,6 +1,6 @@
 {
   "name": "si-language-support",
-  "displayName": "SI Language Support",
+  "displayName": "JPortal SI Language Support",
   "description": "Support for file written in the SI language",
   "author": "BBD",
   "license": "MIT",
@@ -10,7 +10,7 @@
     "type": "git",
     "url": "https://gitlab.com/sbsmuts/si-extension.git"
   },
-  "publisher": "StefanSmuts",
+  "publisher": "BBDSoftware",
   "categories": [
     "Programming Languages"
   ],
@@ -30,13 +30,13 @@
       "type": "object",
       "title": "Configuration",
       "properties": {
-        "languageServerExample.maxNumberOfProblems": {
+        "siLanguageServer.maxNumberOfProblems": {
           "scope": "resource",
           "type": "number",
           "default": 100,
           "description": "Controls the maximum number of problems produced by the server."
         },
-        "languageServerExample.trace.server": {
+        "siLanguageServer.trace.server": {
           "scope": "window",
           "type": "string",
           "enum": [
@@ -82,7 +82,7 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+    "vscode:prepublish": "cd server && npm install && cd ../client && npm install && cd ../ && npm run compile",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
@@ -95,8 +95,5 @@
     "tslint": "^5.20.1",
     "typescript": "^3.8.3"
   },
-  "dependencies": {
-    "antlr4": "^4.8.0",
-    "antlr4ts": "^0.5.0-alpha.3"
-  }
+  "dependencies": {}
 }

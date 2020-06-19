@@ -111,7 +111,7 @@ connection.onDidChangeConfiguration(change => {
     documentSettings.clear();
   } else {
     globalSettings = <ExampleSettings>(
-      (change.settings.languageServerExample || defaultSettings)
+      (change.settings.siLanguageServer || defaultSettings)
     );
   }
 
@@ -127,7 +127,7 @@ function getDocumentSettings(resource: string): Thenable<ExampleSettings> {
   if (!result) {
     result = connection.workspace.getConfiguration({
       scopeUri: resource,
-      section: 'languageServerExample'
+      section: 'siLanguageServer'
     });
     documentSettings.set(resource, result);
   }
@@ -316,8 +316,10 @@ connection.onCompletion(
 connection.onCompletionResolve(
   (item: CompletionItem): CompletionItem => {
     let autocomplete = getAutoComplete();
-    item.detail = autocomplete[item.data].detail;
-    item.documentation = autocomplete[item.data].documentation;
+    if (autocomplete != undefined) {
+      item.detail = autocomplete[item.data].detail;
+      item.documentation = autocomplete[item.data].documentation;
+    }
     return item;
   }
 );
