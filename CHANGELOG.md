@@ -1,24 +1,27 @@
 # Si Language Extension for VSCode ChangeLog
 
 ## 0.0.0
-- Initial release
+- Initial release.
 
 ## 0.0.1
-- Fixed language server dependency
-- Updated language server name
+- Fixed language server dependency.
+- Updated language server name.
 
 ## 0.0.2
-- Attempting to package first
+- Attempting to package first.
 
 ## 0.0.3
-- Rearranged dependencies
+- Rearranged dependencies.
 
 ## 0.0.4
 - Updated the install scripts to match Microsoft's example
-- Renamed the Extension
+- Renamed the Extension.
 
 ## 0.0.5
 - Installing the server the same way as the client.
 
 ## 1.0.0
 - The mystery of missing dependencies was solved when the villain was unmasked as the .vscodeignore file which was ignoring the dependencies.
+
+## 1.0.1
+- Fixed two minor bugs that had to do with autocomplete.

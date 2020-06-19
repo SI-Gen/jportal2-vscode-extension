@@ -4,7 +4,7 @@
   "description": "Support for file written in the SI language",
   "author": "BBD",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "icon": "BBD-logo.png",
   "repository": {
     "type": "git",
@@ -89,11 +89,13 @@
   },
   "devDependencies": {
     "@types/mocha": "^5.2.7",
-    "@types/node": "^12.12.30",
+    "@types/node": "^12.12.47",
     "antlr4ts-cli": "^0.5.0-alpha.3",
-    "ts-loader": "^6.2.1",
+    "ts-loader": "^6.2.2",
     "tslint": "^5.20.1",
-    "typescript": "^3.8.3"
+    "typescript": "^3.9.5"
   },
-  "dependencies": {}
+  "dependencies": {
+    "minimist": "^1.2.5"
+  }
 }
