@@ -188,7 +188,10 @@ options { tokenVocab=siLexer; }
 						( ( IN )? ORDER )? 
 						( ( FOR )? ( UPDATE | READONLY ) )? 
 						( AS jIdent )? 
-						( OUTPUT ( jOutputType )? 
+						(
+							RETURNING ( jProcReturningColumn )+ 
+							|( OUTPUT ( jOutputType )?
+						) 
 						( jField )* )? 
 					| SELECTALL 
 						( ( IN )? ORDER ( jOrderColumn )* ( DESC )? )? 
@@ -217,6 +220,8 @@ options { tokenVocab=siLexer; }
 			);
 
 	jProcColumn	: jIdent;
+
+	jProcReturningColumn : jIdent;
 
 	jOrderColumn : jIdent;
 
