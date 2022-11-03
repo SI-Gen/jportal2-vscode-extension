@@ -25,3 +25,10 @@
 
 ## 1.0.1
 - Fixed two minor bugs that had to do with autocomplete.
+## 1.1.4
+## 🚀 Features
+
+- Fixed the changelog update that wasn't expanding the version tag
+   - PR: #4
+
+
