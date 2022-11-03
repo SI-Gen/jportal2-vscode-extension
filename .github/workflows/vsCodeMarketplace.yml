@@ -39,13 +39,13 @@ jobs:
         draft: false
 
     - name: Update Change Log
-      run: echo "\n\n## {{ steps.bump_version.outputs.new_tag }}\n{{ steps.build_changelog.outputs.changelog }}" >> CHANGELOG.md
+      run: echo -e "\n## ${{ steps.bump_version.outputs.new_tag }}\n${{ steps.build_changelog.outputs.changelog }}" >> CHANGELOG.md
 
     - name: Commit updated CHANGELOG
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         branch: ${{ github.event.release.target_commitish }}
-        commit_message: "chore: Update CHANGELOG for release {{ steps.bump_version.outputs.new_tag }}"
+        commit_message: "chore: Update CHANGELOG for release ${{ steps.bump_version.outputs.new_tag }}"
         file_pattern: CHANGELOG.md
 
     # - name: Publish VS Code Extension
