@@ -39,8 +39,8 @@ jobs:
         draft: false
 
     - name: Update Change Log and npm version
-      run: echo -e "\n## ${{ steps.bump_version.outputs.new_tag }}\n${{ steps.build_changelog.outputs.changelog }}" >> CHANGELOG.md
-      run: npm --no-git-tag-version version ${{ steps.bump_version.outputs.new_tag }}
+      run: |
+        echo -e "\n## ${{ steps.bump_version.outputs.new_tag }}\n${{ steps.build_changelog.outputs.changelog }}" >> CHANGELOG.md && npm --no-git-tag-version --no-commit-hooks version ${{ steps.bump_version.outputs.new_tag }}
 
     - name: Commit updated CHANGELOG and NPM Version
       uses: stefanzweifel/git-auto-commit-action@v4
