@@ -25,3 +25,12 @@
 
 ## 1.0.1
 - Fixed two minor bugs that had to do with autocomplete.
+## 1.0.3
+## 🚀 Features
+
+- cicd: Bumping the project's npm version while updating the change log
+   - PR: #6
+- cicd: Updated the update change log and npm version step because we c…
+   - PR: #7
+
+
