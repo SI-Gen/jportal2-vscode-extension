@@ -48,8 +48,8 @@ jobs:
         commit_message: "chore: Update CHANGELOG for release ${{ steps.bump_version.outputs.new_tag }}"
         file_pattern: CHANGELOG.md
 
-    # - name: Publish VS Code Extension
-    #   uses: HaaLeo/publish-vscode-extension@v1
-    #   with:
-    #     pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
-    #     registryUrl: https://marketplace.visualstudio.com
+    - name: Publish VS Code Extension
+      uses: HaaLeo/publish-vscode-extension@v1
+      with:
+        pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+        registryUrl: https://marketplace.visualstudio.com
