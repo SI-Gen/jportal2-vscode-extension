@@ -24,4 +24,4 @@
 - The mystery of missing dependencies was solved when the villain was unmasked as the .vscodeignore file which was ignoring the dependencies.
 
 ## 1.0.1
-- Fixed two minor bugs that had to do with autocomplete.\n\n## {{ steps.bump_version.outputs.new_tag }}\n{{ steps.build_changelog.outputs.changelog }}
+- Fixed two minor bugs that had to do with autocomplete.
