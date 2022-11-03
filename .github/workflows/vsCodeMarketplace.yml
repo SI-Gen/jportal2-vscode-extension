@@ -38,14 +38,15 @@ jobs:
         body: "${{ steps.build_changelog.outputs.changelog }}"
         draft: false
 
-    - name: Update Change Log
+    - name: Update Change Log and npm version
       run: echo -e "\n## ${{ steps.bump_version.outputs.new_tag }}\n${{ steps.build_changelog.outputs.changelog }}" >> CHANGELOG.md
+      run: npm --no-git-tag-version version ${{ steps.bump_version.outputs.new_tag }}
 
-    - name: Commit updated CHANGELOG
+    - name: Commit updated CHANGELOG and NPM Version
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         branch: ${{ github.event.release.target_commitish }}
-        commit_message: "chore: Update CHANGELOG for release ${{ steps.bump_version.outputs.new_tag }}"
+        commit_message: "chore: Update the CHANGELOG and npm version for release ${{ steps.bump_version.outputs.new_tag }}"
         file_pattern: CHANGELOG.md
 
     - name: Publish VS Code Extension
