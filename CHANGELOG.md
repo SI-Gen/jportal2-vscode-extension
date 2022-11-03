@@ -27,3 +27,6 @@
 - Fixed two minor bugs that had to do with autocomplete.
 
 
+
+## 1.0.2
+- no changes
