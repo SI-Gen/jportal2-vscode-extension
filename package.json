@@ -96,6 +96,6 @@
     "typescript": "^3.9.5"
   },
   "dependencies": {
-    "minimist": "^1.2.5"
+    "minimist": "^1.2.6"
   }
 }
